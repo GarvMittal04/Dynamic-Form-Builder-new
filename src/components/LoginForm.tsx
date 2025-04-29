@@ -1,125 +1,107 @@
-
-import { useState } from "react";
-import { User } from "../types/form";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import { User as UserIcon, LogIn } from "lucide-react";
+import React, { useState } from 'react';
+import { createUser } from '../api/api';
+import { UserLoginData } from '../types/form';
 
 interface LoginFormProps {
-  onLogin: (user: User) => void;
-  isLoading: boolean;
+  onLoginSuccess: (userData: UserLoginData) => void;
 }
 
-const LoginForm = ({ onLogin, isLoading }: LoginFormProps) => {
-  const [formData, setFormData] = useState<User>({
-    rollNumber: "",
-    name: "",
+const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
+  const [userData, setUserData] = useState<UserLoginData>({
+    rollNumber: '',
+    name: '',
   });
-  const [errors, setErrors] = useState<{ rollNumber?: string; name?: string }>({});
-  const { toast } = useToast();
-
-  const validateForm = (): boolean => {
-    const newErrors: { rollNumber?: string; name?: string } = {};
-    
-    if (!formData.rollNumber.trim()) {
-      newErrors.rollNumber = "Roll Number is required";
-    }
-    
-    if (!formData.name.trim()) {
-      newErrors.name = "Name is required";
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setUserData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (validateForm()) {
-      onLogin(formData);
-    } else {
-      toast({
-        title: "Validation Error",
-        description: "Please fill all required fields",
-        variant: "destructive",
-      });
+    setLoading(true);
+    setError(null);
+
+    // Validate inputs
+    if (!userData.rollNumber.trim() || !userData.name.trim()) {
+      setError('Please fill in all fields');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const result = await createUser(userData);
+      
+      if (result.success) {
+        onLoginSuccess(userData);
+      } else {
+        setError(result.message);
+      }
+    } catch (err) {
+      setError('An unexpected error occurred');
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto card-gradient animate-fade-in">
-      <div className="w-full h-2 bg-gradient-to-r from-blue-400 to-blue-600 rounded-t-lg"></div>
-      <CardHeader className="pt-8 pb-4">
-        <div className="mx-auto bg-blue-100 p-3 rounded-full mb-4 w-16 h-16 flex items-center justify-center">
-          <UserIcon className="h-8 w-8 text-form" />
+    <div className="max-w-md w-full bg-white shadow-md rounded-lg p-6">
+      <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">Student Login</h2>
+      
+      {error && (
+        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+          {error}
         </div>
-        <CardTitle className="text-2xl text-center font-bold form-title-gradient">Student Login</CardTitle>
-        <CardDescription className="text-center text-gray-600">
-          Enter your roll number and name to continue
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-2">
-            <Label htmlFor="rollNumber" className="text-sm font-medium text-gray-700">Roll Number</Label>
-            <Input
-              id="rollNumber"
-              name="rollNumber"
-              type="text"
-              placeholder="Enter your roll number"
-              value={formData.rollNumber}
-              onChange={handleChange}
-              disabled={isLoading}
-              data-testid="roll-number-input"
-              className="border-gray-300 focus:border-form focus:ring focus:ring-blue-200 transition-all"
-            />
-            {errors.rollNumber && (
-              <p className="text-red-500 text-sm">{errors.rollNumber}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="name" className="text-sm font-medium text-gray-700">Name</Label>
-            <Input
-              id="name"
-              name="name"
-              type="text"
-              placeholder="Enter your name"
-              value={formData.name}
-              onChange={handleChange}
-              disabled={isLoading}
-              data-testid="name-input"
-              className="border-gray-300 focus:border-form focus:ring focus:ring-blue-200 transition-all"
-            />
-            {errors.name && (
-              <p className="text-red-500 text-sm">{errors.name}</p>
-            )}
-          </div>
-
-          <Button 
-            type="submit" 
-            className="w-full bg-form hover:bg-form-dark transition-all duration-200 flex items-center justify-center gap-2 py-5" 
-            disabled={isLoading}
-          >
-            {isLoading ? "Logging in..." : (
-              <>
-                <LogIn className="h-5 w-5" />
-                <span>Login</span>
-              </>
-            )}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+      )}
+      
+      <form onSubmit={handleSubmit}>
+        <div className="mb-4">
+          <label htmlFor="rollNumber" className="block text-sm font-medium text-gray-700 mb-1">
+            Roll Number
+          </label>
+          <input
+            type="text"
+            id="rollNumber"
+            name="rollNumber"
+            value={userData.rollNumber}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder="Enter your roll number"
+            required
+            data-testid="roll-number-input"
+          />
+        </div>
+        
+        <div className="mb-6">
+          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+            Name
+          </label>
+          <input
+            type="text"
+            id="name"
+            name="name"
+            value={userData.name}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder="Enter your name"
+            required
+            data-testid="name-input"
+          />
+        </div>
+        
+        <button
+          type="submit"
+          className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+          disabled={loading}
+          data-testid="login-button"
+        >
+          {loading ? 'Logging in...' : 'Login'}
+        </button>
+      </form>
+    </div>
   );
 };
 

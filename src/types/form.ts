@@ -1,4 +1,3 @@
-
 export interface FormResponse {
   message: string;
   form: {
@@ -36,10 +35,10 @@ export interface FormField {
 }
 
 export interface FormData {
-  [key: string]: any;
+  [key: string]: string | string[] | boolean;
 }
 
-export interface User {
+export interface UserLoginData {
   rollNumber: string;
   name: string;
 }
